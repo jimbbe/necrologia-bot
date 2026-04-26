@@ -48,6 +48,8 @@ La imagen `jimbe01/necrologia-bot:3.0.0` se publica en Docker Hub mediante GitHu
 - Agregar números autorizados a la lista de permitidos. Si está vacía, el bot queda bloqueado.
 - Verificar el healthcheck: el endpoint real de la app es `/api/health`.
 
+> Si Hostinger sigue mostrando un error viejo de `Caddyfile`, borrá el deployment/stack y crealo de nuevo desde GitHub. A veces conserva estado/cache de montajes anteriores.
+
 > Nota importante: si `docker-compose.yml` apunta el healthcheck a `/health`, el contenedor puede quedar `unhealthy` aunque la app esté corriendo. Cambiarlo a `/api/health` antes del deploy productivo.
 
 ## Pasos de despliegue

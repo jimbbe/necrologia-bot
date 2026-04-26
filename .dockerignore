@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.git
+.DS_Store
+
+# Datos de sesion (se generan en el servidor)
+data/auth
+
+# Archivos de desarrollo
+captures
+screenshots
+scripts
+CLAUDE.md
+.claude
+SITE_FLOWS.md

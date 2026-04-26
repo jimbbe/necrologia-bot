@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - WhatsApp Necrologia</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>&#128225;</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-surface: #0f172a;
+      --color-card: #1e293b;
+      --color-card-hover: #263548;
+      --color-border: #334155;
+      --color-muted: #94a3b8;
+      --color-accent: #3b82f6;
+    }
+  </style>
+  <style>
+    body { background: var(--color-surface); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: #22c55e; box-shadow: 0 0 8px #22c55e80; }
+    .dot-red { background: #ef4444; box-shadow: 0 0 8px #ef444480; }
+    .dot-yellow { background: #eab308; box-shadow: 0 0 8px #eab30880; animation: pulse-dot 2s infinite; }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fade-in 0.3s ease-out; }
+    #logs::-webkit-scrollbar { width: 6px; }
+    #logs::-webkit-scrollbar-track { background: transparent; }
+    #logs::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    .log-info { color: #93c5fd; }
+    .log-warn { color: #fbbf24; }
+    .log-error { color: #f87171; }
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 50; animation: fade-in 0.3s ease-out; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body class="min-h-screen text-slate-200 font-[system-ui,sans-serif] antialiased">
+
+<!-- ===== LOGIN ===== -->
+<div id="login-view" class="flex items-center justify-center min-h-screen px-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="text-4xl mb-3" role="img" aria-label="Telefono">&#128225;</div>
+      <h1 class="text-2xl font-bold text-white">WhatsApp Necrologia</h1>
+      <p class="text-slate-400 text-sm mt-1">Panel de administracion</p>
+    </div>
+    <form id="login-form" class="bg-card border border-border rounded-2xl p-6 shadow-xl shadow-black/20">
+      <label for="pw" class="block text-sm font-medium text-slate-300 mb-2">Contrasena</label>
+      <input id="pw" type="password" placeholder="Ingresa la contrasena" autocomplete="current-password"
+        class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition" />
+      <button type="submit" id="login-btn"
+        class="w-full mt-4 bg-accent hover:bg-blue-600 text-white font-semibold py-3 rounded-xl transition-all active:scale-[0.98] cursor-pointer">
+        Ingresar
+      </button>
+      <p id="login-err" class="text-red-400 text-sm mt-3 text-center hidden"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="dashboard" class="hidden max-w-4xl mx-auto px-4 py-6 space-y-5 fade-in">
+
+  <!-- Header -->
+  <header class="flex justify-between items-center pb-2 border-b border-border">
+    <div>
+      <h1 class="text-xl font-bold text-white flex items-center gap-2">
+        <span role="img" aria-label="Telefono">&#128225;</span> WhatsApp Necrologia
+      </h1>
+      <p class="text-xs text-muted mt-0.5">Panel de administracion — monitoreo y control del bot</p>
+    </div>
+    <button id="logout-btn" class="text-sm text-slate-400 hover:text-white border border-border hover:border-slate-500 px-3 py-1.5 rounded-lg transition cursor-pointer">
+      Cerrar sesion
+    </button>
+  </header>
+
+  <!-- === CONEXION WHATSAPP === -->
+  <section class="bg-card border border-border rounded-2xl p-5">
+    <div class="flex items-center justify-between mb-1">
+      <h2 class="font-semibold text-white flex items-center gap-2">
+        <span class="text-lg" role="img" aria-label="Celular">&#128241;</span> Conexion WhatsApp
+      </h2>
+      <span id="uptime" class="text-xs text-muted font-mono"></span>
+    </div>
+    <p class="text-xs text-muted mb-4">Estado de la conexion con WhatsApp. Si aparece un QR, escanealo con tu celular.</p>
+
+    <div class="flex items-center gap-3 bg-surface/50 rounded-xl px-4 py-3 border border-border/50">
+      <span id="status-dot" class="dot dot-yellow"></span>
+      <span id="status-text" class="font-medium text-sm">Conectando...</span>
+    </div>
+
+    <div id="qr-box" class="hidden mt-4 flex flex-col items-center gap-3 py-4 bg-white rounded-xl">
+      <img id="qr-img" class="w-56 h-56 rounded-lg" alt="Codigo QR de WhatsApp" />
+      <p class="text-xs text-slate-500 font-medium">Abre WhatsApp &gt; Dispositivos vinculados &gt; Vincular dispositivo</p>
+    </div>
+  </section>
+
+  <!-- === CONTROL === -->
+  <section class="bg-card border border-border rounded-2xl p-5">
+    <h2 class="font-semibold text-white flex items-center gap-2 mb-1">
+      <span class="text-lg" role="img" aria-label="Configuracion">&#9881;&#65039;</span> Control
+    </h2>
+    <p class="text-xs text-muted mb-4">Acciones sobre la conexion WhatsApp y configuracion actual del bot.</p>
+
+    <div class="flex gap-3 flex-wrap mb-4">
+      <button id="btn-reconnect"
+        class="flex items-center gap-2 bg-accent/15 text-accent hover:bg-accent/25 border border-accent/30 px-4 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer">
+        &#128260; Reconectar
+      </button>
+      <button id="btn-force-qr"
+        class="flex items-center gap-2 bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30 px-4 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer">
+        &#128244; Nuevo QR
+      </button>
+    </div>
+
+    <div id="config-info" class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted"></div>
+  </section>
+
+  <!-- === NUMEROS AUTORIZADOS === -->
+  <section class="bg-card border border-border rounded-2xl p-5">
+    <div class="flex items-center gap-3 mb-1">
+      <h2 class="font-semibold text-white flex items-center gap-2">
+        <span class="text-lg" role="img" aria-label="Candado">&#128274;</span> Numeros autorizados
+      </h2>
+      <span id="wl-badge" class="text-xs px-2.5 py-0.5 rounded-full font-medium"></span>
+    </div>
+    <p class="text-xs text-muted mb-4">
+      Controla qué números pueden interactuar con el bot. Si la lista está vacía, nadie puede usar el bot hasta agregar al menos un número.
+    </p>
+
+    <div id="numbers-empty" class="hidden text-center py-6 text-slate-500">
+      <div class="text-2xl mb-2" role="img" aria-label="Cerrado">&#128275;</div>
+      <p class="text-sm">Modo cerrado — nadie puede usar el bot todavía</p>
+      <p class="text-xs mt-1">Agregá al menos un número para habilitar el acceso</p>
+    </div>
+
+    <table id="numbers-table" class="hidden w-full text-sm mb-4" aria-label="Numeros autorizados">
+      <thead>
+        <tr class="text-left text-muted text-xs uppercase tracking-wider border-b border-border">
+          <th class="py-2.5 font-medium">Numero</th>
+          <th class="py-2.5 font-medium">Etiqueta</th>
+          <th class="py-2.5 font-medium">Agregado</th>
+          <th class="py-2.5 w-10"><span class="sr-only">Acciones</span></th>
+        </tr>
+      </thead>
+      <tbody id="numbers-body"></tbody>
+    </table>
+
+    <div class="flex gap-2 mt-2">
+      <input id="new-number" placeholder="Ej: 393401234567" inputmode="numeric"
+        class="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-surface border border-border text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition" />
+      <input id="new-label" placeholder="Etiqueta (opcional)"
+        class="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-surface border border-border text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition" />
+      <button id="btn-add-number"
+        class="bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 px-4 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap cursor-pointer">
+        + Agregar
+      </button>
+    </div>
+  </section>
+
+  <!-- === SESIONES ACTIVAS === -->
+  <section class="bg-card border border-border rounded-2xl p-5">
+    <h2 class="font-semibold text-white flex items-center gap-2 mb-1">
+      <span class="text-lg" role="img" aria-label="Conversacion">&#128172;</span> Sesiones activas
+    </h2>
+    <p class="text-xs text-muted mb-4">Conversaciones en curso. Podes cancelar una sesion, y el usuario recibira un aviso por WhatsApp.</p>
+
+    <div id="no-sessions" class="text-center py-6 text-slate-500">
+      <div class="text-2xl mb-2" role="img" aria-label="Dormido">&#128164;</div>
+      <p class="text-sm">Sin sesiones activas</p>
+      <p class="text-xs mt-1">Las sesiones apareceran cuando alguien envie #necro</p>
+    </div>
+
+    <table id="sessions-table" class="hidden w-full text-sm" aria-label="Sesiones activas">
+      <thead>
+        <tr class="text-left text-muted text-xs uppercase tracking-wider border-b border-border">
+          <th class="py-2.5 font-medium">Numero</th>
+          <th class="py-2.5 font-medium">Estado</th>
+          <th class="py-2.5 font-medium">Defunto</th>
+          <th class="py-2.5 font-medium">Tipologia</th>
+          <th class="py-2.5 w-10"><span class="sr-only">Acciones</span></th>
+        </tr>
+      </thead>
+      <tbody id="sessions-body"></tbody>
+    </table>
+  </section>
+
+  <!-- === LOGS === -->
+  <section class="bg-card border border-border rounded-2xl p-5">
+    <div class="flex justify-between items-center mb-1">
+      <h2 class="font-semibold text-white flex items-center gap-2">
+        <span class="text-lg" role="img" aria-label="Documento">&#128196;</span> Logs en tiempo real
+      </h2>
+      <button id="btn-clear-logs" class="text-xs text-muted hover:text-white border border-border hover:border-slate-500 px-2.5 py-1 rounded-lg transition cursor-pointer">
+        Limpiar
+      </button>
+    </div>
+    <p class="text-xs text-muted mb-4">Mensajes entrantes/salientes y eventos del sistema. Se actualiza automaticamente via WebSocket.</p>
+
+    <div id="logs" class="bg-surface rounded-xl p-4 font-mono text-xs leading-relaxed space-y-0.5 border border-border/50 max-h-72 overflow-y-auto min-h-[80px] break-all">
+      <div class="text-slate-600 italic">Esperando eventos...</div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="text-center text-xs text-slate-600 pb-4 pt-2">
+    WhatsApp Necrologia AI &middot; Panel de administracion
+  </footer>
+</div>
+
+<!-- Toast container -->
+<div id="toast" class="toast hidden" role="alert" aria-live="polite">
+  <div id="toast-inner" class="px-4 py-3 rounded-xl text-sm font-medium shadow-lg shadow-black/30 border"></div>
+</div>
+
+<script>
+let token = localStorage.getItem('admin_token');
+let ws = null;
+let toastTimer = null;
+
+const $ = (s) => document.querySelector(s);
+const show = (el) => el.classList.remove('hidden');
+const hide = (el) => el.classList.add('hidden');
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function toast(msg, type = 'info') {
+  const el = $('#toast-inner');
+  const colors = {
+    info: 'bg-blue-950 border-blue-800 text-blue-200',
+    success: 'bg-emerald-950 border-emerald-800 text-emerald-200',
+    error: 'bg-red-950 border-red-800 text-red-200',
+  };
+  el.className = `px-4 py-3 rounded-xl text-sm font-medium shadow-lg shadow-black/30 border ${colors[type] || colors.info}`;
+  el.textContent = msg;
+  show($('#toast'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => hide($('#toast')), 3000);
+}
+
+// --- API helpers with error handling ---
+async function apiFetch(url) {
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (r.status === 401) { token = null; localStorage.removeItem('admin_token'); location.reload(); return null; }
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+async function apiPost(url, body) {
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined });
+    if (r.status === 401) { token = null; localStorage.removeItem('admin_token'); location.reload(); return null; }
+    return await r.json();
+  } catch { return null; }
+}
+
+async function apiDelete(url) {
+  try {
+    const r = await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    if (r.status === 401) { token = null; localStorage.removeItem('admin_token'); location.reload(); return null; }
+    return await r.json();
+  } catch { return null; }
+}
+
+// --- Login ---
+$('#login-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $('#login-btn');
+  const pw = $('#pw').value;
+  if (!pw) return;
+  btn.disabled = true;
+  btn.textContent = 'Ingresando...';
+  hide($('#login-err'));
+  try {
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+    const d = await r.json();
+    if (r.ok) { token = d.token; localStorage.setItem('admin_token', token); initDashboard(); }
+    else { $('#login-err').textContent = 'Contrasena incorrecta'; show($('#login-err')); }
+  } catch { $('#login-err').textContent = 'Error de conexion'; show($('#login-err')); }
+  finally { btn.disabled = false; btn.textContent = 'Ingresar'; }
+};
+
+$('#logout-btn').onclick = () => { token = null; localStorage.removeItem('admin_token'); location.reload(); };
+
+if (token) initDashboard();
+
+// --- Dashboard ---
+async function initDashboard() {
+  hide($('#login-view'));
+  show($('#dashboard'));
+  loadConfig();
+  loadStatus();
+  loadNumbers();
+  connectWS();
+}
+
+async function loadConfig() {
+  const c = await apiFetch('/api/config');
+  if (!c) return;
+  const mode = c.PREVIEW_ONLY ? 'Solo preview' : (c.DRY_RUN ? 'Dry Run' : 'Produccion');
+  const modeColor = c.PREVIEW_ONLY ? 'text-blue-400' : (c.DRY_RUN ? 'text-amber-400' : 'text-emerald-400');
+  const info = $('#config-info');
+  info.innerHTML = '';
+  const items = [
+    ['Modo', mode, modeColor],
+    ['Modelo IA', c.AI_MODEL, 'text-slate-300'],
+    ['Timeout sesion', Math.floor(c.SESSION_TIMEOUT_MS / 60000) + ' min', 'text-slate-300'],
+  ];
+  for (const [label, value, color] of items) {
+    const span = document.createElement('span');
+    span.textContent = label + ': ';
+    const strong = document.createElement('strong');
+    strong.className = color;
+    strong.textContent = value;
+    span.appendChild(strong);
+    info.appendChild(span);
+  }
+}
+
+async function loadStatus() {
+  const s = await apiFetch('/api/status');
+  if (!s) return;
+  updateStatus(s.waStatus);
+  updateUptime(s.uptime);
+}
+
+function updateStatus(status) {
+  const dot = $('#status-dot');
+  const txt = $('#status-text');
+  dot.className = 'dot';
+  if (status === 'open') {
+    dot.classList.add('dot-green');
+    txt.textContent = 'Conectado';
+    txt.className = 'font-medium text-sm text-emerald-400';
+    hide($('#qr-box'));
+  } else if (status === 'close') {
+    dot.classList.add('dot-red');
+    txt.textContent = 'Desconectado';
+    txt.className = 'font-medium text-sm text-red-400';
+  } else if (status === 'reconnecting') {
+    dot.classList.add('dot-yellow');
+    txt.textContent = 'Reconectando...';
+    txt.className = 'font-medium text-sm text-amber-400';
+  } else {
+    dot.classList.add('dot-yellow');
+    txt.textContent = 'Conectando...';
+    txt.className = 'font-medium text-sm text-amber-400';
+  }
+}
+
+function updateUptime(secs) {
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  let str = '';
+  if (d > 0) str += d + 'd ';
+  str += h + 'h ' + m + 'm';
+  $('#uptime').textContent = 'Uptime: ' + str;
+}
+
+// --- Control buttons ---
+$('#btn-reconnect').onclick = async function () {
+  this.disabled = true;
+  this.textContent = 'Reconectando...';
+  toast('Reconectando WhatsApp...', 'info');
+  await apiPost('/api/reconnect');
+  this.disabled = false;
+  this.innerHTML = '&#128260; Reconectar';
+};
+
+$('#btn-force-qr').onclick = async function () {
+  if (!confirm('Esto borrara las credenciales actuales y generara un nuevo QR.\nVas a tener que escanear de nuevo.\n\nContinuar?')) return;
+  this.disabled = true;
+  this.textContent = 'Generando...';
+  toast('Generando nuevo QR...', 'info');
+  await apiPost('/api/force-qr');
+  this.disabled = false;
+  this.innerHTML = '&#128244; Nuevo QR';
+};
+
+// --- Sessions (event delegation instead of inline onclick) ---
+function updateSessions(sessions) {
+  const body = $('#sessions-body');
+  body.innerHTML = '';
+  if (!sessions || sessions.length === 0) {
+    show($('#no-sessions'));
+    hide($('#sessions-table'));
+    return;
+  }
+  hide($('#no-sessions'));
+  show($('#sessions-table'));
+  const stateColors = { collecting: 'text-blue-400', confirming: 'text-amber-400' };
+  const stateLabels = { collecting: 'Recopilando', confirming: 'Confirmando' };
+  for (const s of sessions) {
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-border/50 hover:bg-card-hover transition-colors';
+
+    const tdNum = document.createElement('td');
+    tdNum.className = 'py-3 font-mono text-xs';
+    tdNum.textContent = s.jid.replace(/@.*/, '');
+
+    const tdState = document.createElement('td');
+    tdState.className = 'py-3';
+    const stateSpan = document.createElement('span');
+    stateSpan.className = (stateColors[s.state] || 'text-slate-400') + ' font-medium';
+    stateSpan.textContent = stateLabels[s.state] || s.state;
+    tdState.appendChild(stateSpan);
+
+    const tdDef = document.createElement('td');
+    tdDef.className = 'py-3';
+    tdDef.textContent = s.defunto || '-';
+
+    const tdTipo = document.createElement('td');
+    tdTipo.className = 'py-3 text-muted';
+    tdTipo.textContent = s.tipologia || '-';
+
+    const tdAction = document.createElement('td');
+    tdAction.className = 'py-3';
+    const btn = document.createElement('button');
+    btn.className = 'text-red-400/70 hover:text-red-400 hover:bg-red-400/10 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer';
+    btn.title = 'Cancelar sesion';
+    btn.textContent = '\u2715';
+    btn.dataset.jid = s.jid;
+    btn.addEventListener('click', handleCancelSession);
+    tdAction.appendChild(btn);
+
+    tr.append(tdNum, tdState, tdDef, tdTipo, tdAction);
+    body.appendChild(tr);
+  }
+}
+
+async function handleCancelSession(e) {
+  const jid = e.currentTarget.dataset.jid;
+  const num = jid.replace(/@.*/, '');
+  if (!confirm('Cancelar la sesion de ' + num + '?\nEl usuario recibira un aviso por WhatsApp.')) return;
+  e.currentTarget.disabled = true;
+  await apiPost('/api/sessions/' + encodeURIComponent(jid) + '/cancel');
+  toast('Sesion cancelada', 'success');
+}
+
+// --- Numbers (event delegation instead of inline onclick) ---
+async function loadNumbers() {
+  const nums = await apiFetch('/api/numbers');
+  if (!nums) return;
+  renderNumbers(nums);
+}
+
+function renderNumbers(nums) {
+  const body = $('#numbers-body');
+  body.innerHTML = '';
+  const badge = $('#wl-badge');
+
+  if (nums.length === 0) {
+      badge.textContent = 'Bloqueado';
+      badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30';
+    show($('#numbers-empty'));
+    hide($('#numbers-table'));
+    return;
+  }
+
+  badge.textContent = nums.length + ' numero' + (nums.length > 1 ? 's' : '');
+  badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-medium bg-accent/15 text-accent border border-accent/30';
+  hide($('#numbers-empty'));
+  show($('#numbers-table'));
+
+  for (const n of nums) {
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-border/50 hover:bg-card-hover transition-colors';
+
+    const tdNum = document.createElement('td');
+    tdNum.className = 'py-3 font-mono text-xs';
+    tdNum.textContent = n.number;
+
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'py-3 text-muted';
+    tdLabel.textContent = n.label || '-';
+
+    const tdDate = document.createElement('td');
+    tdDate.className = 'py-3 text-muted text-xs';
+    tdDate.textContent = new Date(n.addedAt).toLocaleDateString();
+
+    const tdAction = document.createElement('td');
+    tdAction.className = 'py-3';
+    const btn = document.createElement('button');
+    btn.className = 'text-red-400/70 hover:text-red-400 hover:bg-red-400/10 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer';
+    btn.title = 'Eliminar numero';
+    btn.textContent = '\u2715';
+    btn.dataset.number = n.number;
+    btn.addEventListener('click', handleRemoveNumber);
+    tdAction.appendChild(btn);
+
+    tr.append(tdNum, tdLabel, tdDate, tdAction);
+    body.appendChild(tr);
+  }
+}
+
+async function handleRemoveNumber(e) {
+  const number = e.currentTarget.dataset.number;
+  if (!confirm('Eliminar el numero ' + number + '?\nYa no podra interactuar con el bot.')) return;
+  e.currentTarget.disabled = true;
+  await apiDelete('/api/numbers/' + number);
+  toast('Numero eliminado', 'success');
+  loadNumbers();
+}
+
+$('#btn-add-number').onclick = async function () {
+  const numInput = $('#new-number');
+  const labelInput = $('#new-label');
+  const number = numInput.value.trim();
+  const label = labelInput.value.trim();
+
+  if (!number) { toast('Ingresa un numero', 'error'); numInput.focus(); return; }
+
+  const clean = number.replace(/[^0-9]/g, '');
+  if (!clean) { toast('El numero debe contener digitos', 'error'); numInput.focus(); return; }
+
+  this.disabled = true;
+  this.textContent = 'Agregando...';
+  const res = await apiPost('/api/numbers', { number: clean, label: label || undefined });
+  this.disabled = false;
+  this.textContent = '+ Agregar';
+
+  if (!res) { toast('Error de conexion', 'error'); return; }
+  if (res.error) {
+    toast(res.error === 'Number already exists' ? 'Ese numero ya existe' : res.error, 'error');
+    return;
+  }
+  numInput.value = '';
+  labelInput.value = '';
+  toast('Numero agregado', 'success');
+  loadNumbers();
+};
+
+$('#new-number').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#btn-add-number').click(); } };
+
+// --- Logs ---
+let logsStarted = false;
+
+function addLog(level, source, message) {
+  const logs = $('#logs');
+  if (!logsStarted) { logs.innerHTML = ''; logsStarted = true; }
+  const el = document.createElement('div');
+  el.className = 'log-' + level;
+  const t = new Date().toLocaleTimeString();
+  const icons = { info: '\u2022', warn: '\u26A0', error: '\u2716' };
+  el.textContent = (icons[level] || '\u2022') + ' ' + t + '  [' + source + ']  ' + message;
+  logs.appendChild(el);
+  if (logs.children.length > 300) logs.removeChild(logs.firstChild);
+  logs.scrollTop = logs.scrollHeight;
+}
+
+$('#btn-clear-logs').onclick = () => {
+  $('#logs').innerHTML = '<div class="text-slate-600 italic">Esperando eventos...</div>';
+  logsStarted = false;
+};
+
+// --- WebSocket ---
+let wsReconnectDelay = 1000;
+
+function connectWS() {
+  if (ws) { try { ws.close(); } catch {} }
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(proto + '://' + location.host + '/ws?token=' + token);
+
+  ws.onopen = () => { wsReconnectDelay = 1000; };
+
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      switch (msg.type) {
+        case 'wa:qr':
+          show($('#qr-box'));
+          if (msg.data.dataUrl) $('#qr-img').src = msg.data.dataUrl;
+          updateStatus('connecting');
+          break;
+        case 'wa:status':
+          updateStatus(msg.data.status);
+          if (msg.data.status === 'open') { hide($('#qr-box')); toast('WhatsApp conectado', 'success'); }
+          if (msg.data.status === 'close') toast('WhatsApp desconectado', 'error');
+          break;
+        case 'session:update':
+          updateSessions(msg.data);
+          break;
+        case 'msg:activity': {
+          const dir = msg.data.direction === 'in' ? 'RECIBIDO' : 'ENVIADO';
+          addLog('info', dir, msg.data.jid.replace(/@.*/, '') + ': ' + msg.data.preview);
+          break;
+        }
+        case 'log':
+          addLog(msg.data.level, msg.data.source, msg.data.message);
+          break;
+        case 'browser:busy':
+          addLog('warn', 'BROWSER', msg.data.jid ? 'Ocupado: ' + msg.data.jid.replace(/@.*/, '') : 'Libre');
+          break;
+        case 'ping': break;
+      }
+    } catch {}
+  };
+
+  ws.onclose = () => {
+    wsReconnectDelay = Math.min(wsReconnectDelay * 1.5, 10000);
+    setTimeout(connectWS, wsReconnectDelay);
+  };
+
+  ws.onerror = () => {
+    addLog('error', 'WS', 'Conexion perdida, reconectando...');
+  };
+}
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 Bot de WhatsApp para agencias funerarias. El operador envía los datos del difunto por WhatsApp; el bot recopila la información, genera una vista previa y, cuando corresponde, publica el necrologio en amcannunci.it.
 
-El panel admin no usa React/Vue/Next/Vite: es HTML/CSS/JavaScript estático servido por Express. En producción queda detrás de Caddy como reverse proxy HTTPS.
+El panel admin no usa React/Vue/Next/Vite: es HTML/CSS/JavaScript estático servido por Express. En producción queda detrás de Caddy como reverse proxy HTTPS usando el archivo `Caddyfile` del repo.
 
 ## Funcionalidades
 
@@ -141,6 +141,8 @@ Funciones:
 **El QR no aparece:** en el panel admin, hacer clic en **Nuevo QR**.
 
 **`XAI_API_KEY is required`:** verificar que la variable esté cargada en Hostinger Docker Manager.
+
+**Error de mount en Caddyfile:** verificar que el archivo `Caddyfile` exista en la raíz del repo y que el deploy use el compose actualizado.
 
 **El contenedor queda `unhealthy`:** el endpoint real de salud es `/api/health`. Si el healthcheck apunta a `/health` o falta `ADMIN_PASSWORD`, corregirlo antes de subir.
 

@@ -3,11 +3,13 @@ services:
     image: caddy:2.8-alpine
     container_name: necrologia-bot-proxy
     restart: unless-stopped
-    command: reverse-proxy --from ${FRONTEND_DOMAIN} --to app:3000
+    environment:
+      FRONTEND_DOMAIN: ${FRONTEND_DOMAIN}
     ports:
       - "80:80"
       - "443:443"
     volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

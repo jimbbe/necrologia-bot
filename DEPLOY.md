@@ -21,9 +21,9 @@ No es buena candidata para serverless: necesita proceso persistente, sesión loc
 
 Para Hostinger Docker Manager, usá una imagen pública en lugar de `build: .`.
 
-El frontend de este proyecto **no es React/Vue/Next/Vite**: es un panel HTML/CSS/JavaScript estático servido por Express desde `src/admin/public`. Caddy queda delante como reverse proxy con HTTPS.
+El frontend de este proyecto **no es React/Vue/Next/Vite**: es un panel HTML/CSS/JavaScript estático servido por Express desde `src/admin/public`. Caddy queda delante como reverse proxy con HTTPS usando el archivo `Caddyfile` del repo.
 
-El reverse proxy se define con el comando de Caddy dentro del compose; no hace falta montar un archivo `Caddyfile`.
+Asegurate de que `Caddyfile` exista en la raíz del proyecto; el compose lo monta como archivo en `/etc/caddy/Caddyfile`.
 
 En el `docker-compose.yml` final, la línea clave debe ser algo como:
 
@@ -40,6 +40,7 @@ La imagen `jimbe01/necrologia-bot:3.0.0` se publica en Docker Hub mediante GitHu
 - Configurar `XAI_API_KEY`.
 - Configurar `ADMIN_PASSWORD`; si falta, no levanta el panel web.
 - Configurar `FRONTEND_DOMAIN`, `FRONTEND_URL` y `BACKEND_URL`.
+- Usar un dominio raíz o subdominio, **no** un subpath como `/necrologio`.
 - Apuntar el registro DNS `A` del dominio a la IP de la VPS.
 - Abrir puertos `80/tcp` y `443/tcp` en Hostinger/firewall.
 - Para publicación real, usar `PREVIEW_ONLY=false` y `DRY_RUN=false`.

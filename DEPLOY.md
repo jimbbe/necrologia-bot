@@ -31,6 +31,8 @@ image: jimbe01/necrologia-bot:3.0.0
 
 El bloque `environment:` usa placeholders como `${XAI_API_KEY}` para que Hostinger tome los valores del panel de entorno del servicio. El puerto interno `3000` no se publica al exterior; solo se exponen `80` y `443` por Caddy.
 
+La imagen `jimbe01/necrologia-bot:3.0.0` se publica en Docker Hub mediante GitHub Actions. Configurá el secret `DOCKERHUB_TOKEN` en GitHub antes de ejecutar el workflow `Publish Docker image`.
+
 ## Checklist antes de producción
 
 - Configurar `XAI_API_KEY`.

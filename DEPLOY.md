@@ -21,18 +21,23 @@ No es buena candidata para serverless: necesita proceso persistente, sesión loc
 
 Para Hostinger Docker Manager, usá una imagen pública en lugar de `build: .`.
 
+El frontend de este proyecto **no es React/Vue/Next/Vite**: es un panel HTML/CSS/JavaScript estático servido por Express desde `src/admin/public`. Caddy queda delante como reverse proxy con HTTPS.
+
 En el `docker-compose.yml` final, la línea clave debe ser algo como:
 
 ```yaml
 image: jimbe01/necrologia-bot:3.0.0
 ```
 
-El bloque `environment:` usa placeholders como `${XAI_API_KEY}` para que Hostinger tome los valores del panel de entorno del servicio.
+El bloque `environment:` usa placeholders como `${XAI_API_KEY}` para que Hostinger tome los valores del panel de entorno del servicio. El puerto interno `3000` no se publica al exterior; solo se exponen `80` y `443` por Caddy.
 
 ## Checklist antes de producción
 
 - Configurar `XAI_API_KEY`.
 - Configurar `ADMIN_PASSWORD`; si falta, no levanta el panel web.
+- Configurar `FRONTEND_DOMAIN`, `FRONTEND_URL` y `BACKEND_URL`.
+- Apuntar el registro DNS `A` del dominio a la IP de la VPS.
+- Abrir puertos `80/tcp` y `443/tcp` en Hostinger/firewall.
 - Para publicación real, usar `PREVIEW_ONLY=false` y `DRY_RUN=false`.
 - Si `PREVIEW_ONLY=false`, completar `AMC_USERNAME` y `AMC_PASSWORD`.
 - Agregar números autorizados a la lista de permitidos. Si está vacía, el bot queda bloqueado.
@@ -58,6 +63,9 @@ Variables mínimas:
 
 | Variable | Descripción |
 |----------|-------------|
+| `FRONTEND_DOMAIN` | Dominio sin protocolo. Ej: `tudominio.com` |
+| `FRONTEND_URL` | URL pública del panel. Ej: `https://tudominio.com` |
+| `BACKEND_URL` | URL pública del backend. En este proyecto normalmente igual a `FRONTEND_URL` |
 | `XAI_API_KEY` | Clave API de xAI (Grok) |
 | `ADMIN_PASSWORD` | Contraseña para el panel web; necesaria para escanear QR |
 | `AMC_USERNAME` | Usuario de amcannunci.it, obligatorio si `PREVIEW_ONLY=false` |
@@ -69,6 +77,8 @@ Para producción real:
 ```env
 PREVIEW_ONLY=false
 DRY_RUN=false
+ADMIN_HOST=0.0.0.0
+ADMIN_PORT=3000
 ```
 
 ### 3. Levantar el contenedor
@@ -87,7 +97,10 @@ La primera descarga puede tardar unos minutos si la imagen todavía no está en 
 docker compose ps
 
 # Health check real de la app
-curl http://localhost:3000/api/health
+docker exec necrologia-bot node -e "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
+# Health check público por dominio
+curl https://tudominio.com/api/health
 
 # Logs en tiempo real
 docker compose logs -f
@@ -97,31 +110,20 @@ La respuesta esperada del endpoint de salud incluye `"status":"ok"`.
 
 ### 5. Escanear el QR de WhatsApp
 
-El `docker-compose.yml` actual publica el puerto así:
+El `docker-compose.yml` actual expone solo el reverse proxy:
 
 ```yaml
 ports:
-  - "3000:3000"
+  - "80:80"
+  - "443:443"
 ```
 
-Eso deja el panel accesible desde fuera del VPS. Asegurate de abrir el puerto 3000 en el firewall de Hostinger o en `ufw`.
+El contenedor de la app solo expone `3000` dentro de la red Docker.
 
 Podés entrar directo desde el navegador a:
 
 ```text
-http://IP_DE_LA_VPS:3000
-```
-
-Si preferís un acceso más cerrado, usar túnel SSH:
-
-```bash
-ssh -L 3000:localhost:3000 usuario@IP_DE_LA_VPS
-```
-
-Luego abrir:
-
-```text
-http://localhost:3000
+https://tudominio.com
 ```
 
 Ingresar la `ADMIN_PASSWORD`, ir a la sección QR y escanearlo con WhatsApp.
@@ -134,7 +136,7 @@ Si la lista de permitidos está vacía, el bot queda bloqueado hasta que agregue
 
 ## Acceso público al panel admin
 
-Como el puerto 3000 queda público, asegurá firewall y contraseña fuerte. Si más adelante querés endurecerlo, poné un reverse proxy con HTTPS delante del puerto 3000.
+El panel queda público por HTTPS detrás de Caddy. No abras el puerto `3000` al exterior; abrí solo `80` y `443`.
 
 ## Comandos de operación
 
@@ -168,7 +170,7 @@ Ante un `docker compose down && docker compose up -d`, la sesión de WhatsApp se
 | Síntoma | Causa probable | Solución |
 |---------|----------------|----------|
 | Contenedor en estado `unhealthy` | Healthcheck apuntando a `/health` o `ADMIN_PASSWORD` ausente | Usar `/api/health`, configurar `ADMIN_PASSWORD` y revisar `docker compose logs` |
-| `XAI_API_KEY is required` en logs | `.env` sin la key | Editar `.env` y reiniciar |
+| `XAI_API_KEY is required` en logs | Variable ausente en Hostinger Docker Manager | Cargar `XAI_API_KEY` y reiniciar |
 | `Bad MAC` en logs de WhatsApp | Sesión Signal desincronizada | `rm -rf data/auth/`, reiniciar y reescanear QR |
 | Bot no responde a mensajes | Número bloqueado por la lista de permitidos o sesión caída | Revisar panel admin y lista de permitidos |
 | Bot bloqueado al arrancar | Lista de permitidos vacía | Agregar al menos un número autorizado |

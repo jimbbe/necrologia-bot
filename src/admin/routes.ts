@@ -107,6 +107,8 @@ export function createRouter(): Router {
       SESSION_TIMEOUT_MS: config.SESSION_TIMEOUT_MS,
       MAX_HISTORY: config.MAX_HISTORY,
       ADMIN_PORT: config.ADMIN_PORT,
+      FRONTEND_URL: config.FRONTEND_URL,
+      BACKEND_URL: config.BACKEND_URL,
     });
   });
 

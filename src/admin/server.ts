@@ -21,6 +21,8 @@ function resolvePublicDir(): string {
 export function startAdminServer(): http.Server {
   const app = express();
 
+  app.set("trust proxy", 1);
+
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -43,8 +45,12 @@ export function startAdminServer(): http.Server {
     res.sendFile(path.join(publicDir, "index.html"));
   });
 
-  const server = app.listen(config.ADMIN_PORT, () => {
-    console.log(`🖥️  Admin panel: http://localhost:${config.ADMIN_PORT}`);
+  app.get(/^\/(?!api\/).*/, (_req, res) => {
+    res.sendFile(path.join(publicDir, "index.html"));
+  });
+
+  const server = app.listen(config.ADMIN_PORT, config.ADMIN_HOST, () => {
+    console.log(`🖥️  Admin panel: http://${config.ADMIN_HOST}:${config.ADMIN_PORT}`);
   });
 
   setupWebSocket(server);

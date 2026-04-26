@@ -1,9 +1,27 @@
 services:
+  proxy:
+    image: caddy:2.8-alpine
+    container_name: necrologia-bot-proxy
+    restart: unless-stopped
+    environment:
+      FRONTEND_DOMAIN: ${FRONTEND_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
   app:
     image: jimbe01/necrologia-bot:3.0.0
     container_name: necrologia-bot
     restart: unless-stopped
     environment:
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      BACKEND_URL: ${BACKEND_URL:-}
       XAI_API_KEY: ${XAI_API_KEY}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-grok-4-1-fast}
@@ -15,9 +33,10 @@ services:
       DRY_RUN: ${DRY_RUN:-false}
       PREVIEW_ONLY: ${PREVIEW_ONLY:-false}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_HOST: ${ADMIN_HOST:-0.0.0.0}
       ADMIN_PORT: ${ADMIN_PORT:-3000}
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     volumes:
       - ./data:/app/data
     mem_limit: 1536m
@@ -27,3 +46,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+
+volumes:
+  caddy_data:
+  caddy_config:

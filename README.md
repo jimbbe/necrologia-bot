@@ -2,6 +2,8 @@
 
 Bot de WhatsApp para agencias funerarias. El operador envía los datos del difunto por WhatsApp; el bot recopila la información, genera una vista previa y, cuando corresponde, publica el necrologio en amcannunci.it.
 
+El panel admin no usa React/Vue/Next/Vite: es HTML/CSS/JavaScript estático servido por Express. En producción queda detrás de Caddy como reverse proxy HTTPS.
+
 ## Funcionalidades
 
 - 4 tipologías: **participación**, **anuncio familiar**, **aniversario**, **agradecimiento/trigésimo**
@@ -37,6 +39,9 @@ En Hostinger Docker Manager, cargá estas variables en el panel de entorno del s
 
 Variables mínimas:
 
+- `FRONTEND_DOMAIN` (ej: `tudominio.com`)
+- `FRONTEND_URL` (ej: `https://tudominio.com`)
+- `BACKEND_URL` (ej: `https://tudominio.com`)
 - `XAI_API_KEY`
 - `ADMIN_PASSWORD`
 - `AMC_USERNAME`
@@ -51,29 +56,18 @@ DRY_RUN=false
 
 ### 2. Levantar el contenedor
 
+Antes de levantarlo, apuntá el registro DNS `A` de `FRONTEND_DOMAIN` a la IP de la VPS y abrí solo los puertos `80/tcp` y `443/tcp`.
+
 ```bash
 docker compose up -d
 ```
 
 ### 3. Escanear el QR
 
-Con el `docker-compose.yml` actual, el panel queda expuesto en `3000`.
-Si el firewall del VPS lo permite, entrá directo a:
+El panel queda detrás de Caddy y se accede por HTTPS:
 
 ```text
-http://IP_DEL_SERVIDOR:3000
-```
-
-Si preferís mantenerlo más cerrado, abrí un túnel SSH:
-
-```bash
-ssh -L 3000:localhost:3000 usuario@IP_DEL_SERVIDOR
-```
-
-Luego entrá en el navegador local a:
-
-```text
-http://localhost:3000
+https://tudominio.com
 ```
 
 Ingresá con `ADMIN_PASSWORD` y escaneá el QR con WhatsApp desde:
@@ -91,7 +85,7 @@ docker compose ps
 # Logs en tiempo real
 docker compose logs -f
 
-# Reiniciar después de cambios en .env
+# Reiniciar después de cambios de configuración
 docker compose restart
 
 # Actualizar el código
@@ -130,10 +124,14 @@ Funciones:
 | `AMC_USERNAME` | Si `PREVIEW_ONLY=false` | — | Usuario de amcannunci.it |
 | `AMC_PASSWORD` | Si `PREVIEW_ONLY=false` | — | Contraseña de amcannunci.it |
 | `AMC_BASE_URL` | No | `https://www.amcannunci.it` | URL base del sitio |
+| `FRONTEND_DOMAIN` | Sí | — | Dominio público para Caddy, sin protocolo |
+| `FRONTEND_URL` | Sí | — | URL pública del panel, con `https://` |
+| `BACKEND_URL` | Sí | — | URL pública del backend; en este proyecto normalmente igual a `FRONTEND_URL` |
 | `PREVIEW_ONLY` | No | `true` | Solo genera vistas previas; no interactúa con amcannunci.it |
 | `DRY_RUN` | No | `true` | Completa el formulario pero no lo envía |
 | `SESSION_TIMEOUT_MS` | No | `1800000` | Timeout por inactividad (30 min) |
 | `ADMIN_PASSWORD` | Sí para deploy | — | Contraseña del panel admin; sin ella no hay panel ni healthcheck |
+| `ADMIN_HOST` | No | `0.0.0.0` | Host interno donde escucha Express dentro del contenedor |
 | `ADMIN_PORT` | No | `3000` | Puerto del panel admin |
 
 > Importante: por seguridad, el código queda en modo prueba si no configurás explícitamente `PREVIEW_ONLY=false` y `DRY_RUN=false`.
@@ -142,7 +140,7 @@ Funciones:
 
 **El QR no aparece:** en el panel admin, hacer clic en **Nuevo QR**.
 
-**`XAI_API_KEY is required`:** verificar que `.env` exista y contenga la key.
+**`XAI_API_KEY is required`:** verificar que la variable esté cargada en Hostinger Docker Manager.
 
 **El contenedor queda `unhealthy`:** el endpoint real de salud es `/api/health`. Si el healthcheck apunta a `/health` o falta `ADMIN_PASSWORD`, corregirlo antes de subir.
 

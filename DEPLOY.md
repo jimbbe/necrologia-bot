@@ -23,7 +23,7 @@ Para Hostinger Docker Manager, usá una imagen pública en lugar de `build: .`.
 
 El frontend de este proyecto **no es React/Vue/Next/Vite**: es un panel HTML/CSS/JavaScript estático servido por Express desde `src/admin/public`. Caddy queda delante como reverse proxy con HTTPS.
 
-El compose actual **no monta ningún `Caddyfile`**. Caddy se configura con `command: caddy reverse-proxy --from ${FRONTEND_DOMAIN} --to app:3000` para evitar errores de bind mount en Hostinger.
+El compose actual **no monta ningún `Caddyfile`**. Caddy se configura con `command: ["caddy", "reverse-proxy", "--from", "${FRONTEND_DOMAIN}", "--to", "app:3000"]` para evitar errores de bind mount en Hostinger.
 
 En el `docker-compose.yml` final, la línea clave debe ser algo como:
 

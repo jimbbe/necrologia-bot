@@ -23,6 +23,8 @@ Para Hostinger Docker Manager, usá una imagen pública en lugar de `build: .`.
 
 El frontend de este proyecto **no es React/Vue/Next/Vite**: es un panel HTML/CSS/JavaScript estático servido por Express desde `src/admin/public`. Caddy queda delante como reverse proxy con HTTPS.
 
+El reverse proxy se define con el comando de Caddy dentro del compose; no hace falta montar un archivo `Caddyfile`.
+
 En el `docker-compose.yml` final, la línea clave debe ser algo como:
 
 ```yaml

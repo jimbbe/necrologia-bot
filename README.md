@@ -33,10 +33,14 @@ Bot de WhatsApp para agencias funerarias. El operador envía los datos del difun
 
 ### 1. Configurar variables de entorno
 
-```bash
-cp .env.example .env
-nano .env   # completar XAI_API_KEY, AMC_USERNAME, AMC_PASSWORD y ADMIN_PASSWORD
-```
+En Hostinger Docker Manager, cargá estas variables en el panel de entorno del servicio. No hace falta crear un archivo `.env` si el gestor ya inyecta las variables.
+
+Variables mínimas:
+
+- `XAI_API_KEY`
+- `ADMIN_PASSWORD`
+- `AMC_USERNAME`
+- `AMC_PASSWORD`
 
 Para producción real, configurar:
 
@@ -115,7 +119,7 @@ Funciones:
 - Sesiones activas con posibilidad de cancelación
 - Log de eventos en tiempo real
 
-## Configuración (`.env`)
+## Configuración de entorno
 
 | Variable | Obligatoria | Valor por defecto real del código | Descripción |
 |----------|-------------|-------------------------|-------------|

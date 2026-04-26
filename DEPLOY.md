@@ -24,8 +24,10 @@ Para Hostinger Docker Manager, usá una imagen pública en lugar de `build: .`.
 En el `docker-compose.yml` final, la línea clave debe ser algo como:
 
 ```yaml
-image: TU_USUARIO_DOCKERHUB/necrologia-bot:3.0.0
+image: jimbe01/necrologia-bot:3.0.0
 ```
+
+El bloque `environment:` usa placeholders como `${XAI_API_KEY}` para que Hostinger tome los valores del panel de entorno del servicio.
 
 ## Checklist antes de producción
 
@@ -48,14 +50,11 @@ cd /opt/necrologia-bot
 unzip necrologia-bot.zip
 ```
 
-### 2. Crear el archivo `.env`
+### 2. Cargar variables de entorno
 
-```bash
-cp .env.example .env
-nano .env
-```
+En Hostinger Docker Manager, pegá estas variables en el panel de entorno del servicio. No hace falta crear `.env` si el gestor las inyecta directamente.
 
-Variables obligatorias/recomendadas:
+Variables mínimas:
 
 | Variable | Descripción |
 |----------|-------------|

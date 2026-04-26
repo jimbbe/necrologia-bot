@@ -1,9 +1,21 @@
 services:
   app:
-    image: TU_USUARIO_DOCKERHUB/necrologia-bot:3.0.0
+    image: jimbe01/necrologia-bot:3.0.0
     container_name: necrologia-bot
     restart: unless-stopped
-    env_file: .env
+    environment:
+      XAI_API_KEY: ${XAI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-grok-4-1-fast}
+      MAX_HISTORY: ${MAX_HISTORY:-30}
+      AMC_USERNAME: ${AMC_USERNAME}
+      AMC_PASSWORD: ${AMC_PASSWORD}
+      AMC_BASE_URL: ${AMC_BASE_URL:-https://www.amcannunci.it}
+      SESSION_TIMEOUT_MS: ${SESSION_TIMEOUT_MS:-1800000}
+      DRY_RUN: ${DRY_RUN:-false}
+      PREVIEW_ONLY: ${PREVIEW_ONLY:-false}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_PORT: ${ADMIN_PORT:-3000}
     ports:
       - "3000:3000"
     volumes:

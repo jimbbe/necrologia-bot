@@ -12,7 +12,7 @@ import path from "path";
 import fs from "fs";
 import { transcribeAudio } from "./transcribe.js";
 import { bus } from "./events.js";
-import { isAllowed } from "./whitelist.js";
+import { checkAllowed } from "./whitelist.js";
 
 const AUTH_DIR = path.join(process.cwd(), "data", "auth");
 
@@ -237,7 +237,21 @@ export async function startWhatsApp(onMessage: OnMessageCallback): Promise<void>
 
       if (!msg.key.remoteJid) continue;
 
-      if (!isAllowed(msg.key.remoteJid)) continue;
+      const allowDecision = checkAllowed(msg.key.remoteJid);
+      if (!allowDecision.allowed) {
+        console.warn(
+          `🚫 Mensaje bloqueado de ${allowDecision.incomingNumber || msg.key.remoteJid}: ${allowDecision.reason}`
+        );
+        continue;
+      }
+
+      if (allowDecision.matchType === "last6") {
+        console.log(
+          `✅ Whitelist: ${allowDecision.incomingNumber} autorizado por últimos 6 dígitos de ${allowDecision.matchedNumber}`
+        );
+      } else {
+        console.log(`✅ Whitelist: ${allowDecision.incomingNumber} autorizado por match exacto`);
+      }
 
       // Extract text from regular messages
       let text =

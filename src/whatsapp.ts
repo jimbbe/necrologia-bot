@@ -18,10 +18,11 @@ const AUTH_DIR = path.join(process.cwd(), "data", "auth");
 
 // --- Error tracking ---
 let decryptErrorCount = 0;
-const DECRYPT_ERROR_THRESHOLD = 10; // consecutive errors before auto-reset
+const DECRYPT_ERROR_THRESHOLD = 10; // consecutive relevant errors before alerting
 let lastDecryptErrorTime = 0;
 const DECRYPT_ERROR_WINDOW_MS = 60_000; // reset counter if no error for 1 min
-let isRecovering = false;
+let lastDecryptThresholdAlertTime = 0;
+const DECRYPT_THRESHOLD_ALERT_COOLDOWN_MS = 5 * 60_000;
 
 // Callback for notifying active sessions about connection issues
 let onConnectionError: (() => Promise<void>) | null = null;
@@ -57,8 +58,22 @@ const errorInterceptLogger = {
   },
 };
 
+function getIgnoredDecryptErrorReason(msg: string): "fromMe" | "lid" | null {
+  if (msg.includes('"fromMe":true')) return "fromMe";
+  if (msg.includes("@lid")) return "lid";
+  return null;
+}
+
 function handleDecryptError(msg: string): void {
   const now = Date.now();
+
+  const ignoredReason = getIgnoredDecryptErrorReason(msg);
+  if (ignoredReason) {
+    console.warn(
+      `⚠️ Error de decriptación ignorado (${ignoredReason}): ${msg.substring(0, 100)}`
+    );
+    return;
+  }
 
   // Reset counter if enough time passed since last error
   if (now - lastDecryptErrorTime > DECRYPT_ERROR_WINDOW_MS) {
@@ -70,55 +85,16 @@ function handleDecryptError(msg: string): void {
 
   console.warn(`⚠️ Error de decriptación (${decryptErrorCount}/${DECRYPT_ERROR_THRESHOLD}): ${msg.substring(0, 100)}`);
 
-  if (decryptErrorCount >= DECRYPT_ERROR_THRESHOLD && !isRecovering) {
-    console.error(`🔴 Demasiados errores de decriptación (${decryptErrorCount}). Iniciando auto-recuperación...`);
-    triggerAutoRecovery();
+  if (
+    decryptErrorCount >= DECRYPT_ERROR_THRESHOLD &&
+    now - lastDecryptThresholdAlertTime > DECRYPT_THRESHOLD_ALERT_COOLDOWN_MS
+  ) {
+    lastDecryptThresholdAlertTime = now;
+    console.error(
+      `🔴 Demasiados errores de decriptación relevantes (${decryptErrorCount}/${DECRYPT_ERROR_THRESHOLD}). ` +
+      "No se borrará la sesión automáticamente. Si el bot deja de funcionar, usá Reconectar o Nuevo QR manualmente."
+    );
   }
-}
-
-async function triggerAutoRecovery(): Promise<void> {
-  if (isRecovering) return;
-  isRecovering = true;
-
-  console.log("🔄 Auto-recuperación: notificando usuarios activos...");
-
-  // Notify active sessions
-  if (onConnectionError) {
-    try {
-      await onConnectionError();
-    } catch (e) {
-      console.error("Error notificando usuarios:", e);
-    }
-  }
-
-  console.log("🔄 Auto-recuperación: borrando auth y reconectando...");
-
-  // Close current socket
-  try {
-    if (sock) {
-      sock.end(undefined);
-      sock = null;
-    }
-  } catch {}
-
-  // Delete auth directory
-  try {
-    fs.rmSync(AUTH_DIR, { recursive: true, force: true });
-    console.log("🗑️ Auth borrado. Se necesitará escanear QR de nuevo.");
-  } catch (e) {
-    console.error("Error borrando auth:", e);
-  }
-
-  decryptErrorCount = 0;
-  isRecovering = false;
-
-  // Reconnect after a brief pause
-  setTimeout(() => {
-    if (currentOnMessage) {
-      console.log("🔄 Reconectando...");
-      startWhatsApp(currentOnMessage);
-    }
-  }, 3000);
 }
 
 // Track sent message IDs with timestamps for TTL-based cleanup
@@ -216,7 +192,6 @@ export async function startWhatsApp(onMessage: OnMessageCallback): Promise<void>
     if (connection === "open") {
       console.log("✅ Conectado a WhatsApp");
       decryptErrorCount = 0;
-      isRecovering = false;
       isReconnecting = false;
       bus.emit("wa:status", "open");
     }
